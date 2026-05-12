@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Carbon Emission Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Design Tokens ─────────────────────────── */
+    :root {
+      --bg:        #080c10;
+      --surface:   #0e1520;
+      --card:      #131d2e;
+      --border:    #1e2f45;
+      --accent:    #00e5b0;
+      --accent2:   #0ea5e9;
+      --warn:      #f59e0b;
+      --danger:    #ef4444;
+      --text:      #e2eaf4;
+      --muted:     #5a7a9a;
+      --mono:      'Space Mono', monospace;
+      --sans:      'Syne', sans-serif;
+      --radius:    12px;
+      --glow:      0 0 30px rgba(0,229,176,0.15);
+    }
+
+    /* ─── Reset ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── Background Grid ────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,176,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,176,0.03) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ─── Header ─────────────────────────────────── */
+    header {
+      position: relative;
+      z-index: 10;
+      padding: 2rem 2rem 0;
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .logo-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+      box-shadow: 0 0 20px rgba(0,229,176,0.4);
+    }
+    .logo-text h1 {
+      font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .logo-text p { font-size: 0.75rem; color: var(--muted); font-family: var(--mono); }
+
+    /* ─── Hero ───────────────────────────────────── */
+    .hero {
+      position: relative; z-index: 10;
+      max-width: 1100px; margin: 0 auto;
+      padding: 3rem 2rem 1.5rem;
+      text-align: center;
+    }
+    .hero h2 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800; letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+    .hero h2 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 1rem; color: var(--muted); max-width: 540px; margin: 0 auto 2rem;
+      line-height: 1.7;
+    }
+
+    /* ─── Mode Tabs ──────────────────────────────── */
+    .tabs {
+      display: flex; gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 6px;
+      width: fit-content; margin: 0 auto 2.5rem;
+    }
+    .tab-btn {
+      font-family: var(--sans); font-weight: 700; font-size: 0.85rem;
+      padding: 0.55rem 1.4rem;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: all .2s;
+      background: transparent; color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000; box-shadow: 0 4px 16px rgba(0,229,176,0.3);
+    }
+    .tab-btn:not(.active):hover { color: var(--text); background: var(--border); }
+
+    /* ─── Layout ─────────────────────────────────── */
+    .main-wrap {
+      position: relative; z-index: 10;
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 2rem 4rem;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 860px) {
+      .main-wrap { grid-template-columns: 1fr; }
+    }
+
+    /* ─── Card ───────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: border-color .3s;
+    }
+    .card:hover { border-color: rgba(0,229,176,0.25); }
+
+    /* ─── Section Heading ────────────────────────── */
+    .section-label {
+      font-family: var(--mono);
+      font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+
+    /* ─── Form Grid ──────────────────────────────── */
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    @media (max-width: 600px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+    }
+
+    /* ─── Form Controls ──────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 0.4rem; }
+    label {
+      font-size: 0.75rem; font-weight: 600; letter-spacing: 0.05em;
+      color: var(--muted); text-transform: uppercase;
+    }
+    select, input[type="number"] {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--sans); font-size: 0.9rem;
+      padding: 0.6rem 0.85rem;
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,176,0.1);
+    }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a7a9a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.85rem center;
+      padding-right: 2.25rem;
+    }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 0.4; }
+
+    /* ─── Multi-checkbox group ───────────────────── */
+    .check-group {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+    }
+    .check-group label {
+      font-size: 0.72rem; text-transform: capitalize; letter-spacing: 0;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.35rem 0.7rem; cursor: pointer;
+      transition: all .15s; font-weight: 600; color: var(--muted);
+      display: flex; align-items: center; gap: 0.35rem;
+    }
+    .check-group input[type="checkbox"] { display: none; }
+    .check-group input[type="checkbox"]:checked + span,
+    .check-group label:has(input:checked) {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,229,176,0.08);
+    }
+    .check-item {
+      display: flex; align-items: center;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; padding: 0.35rem 0.7rem; cursor: pointer;
+      transition: all .15s; font-weight: 600; color: var(--muted);
+      font-size: 0.72rem; font-family: var(--sans); text-transform: capitalize;
+      gap: 0.4rem; user-select: none;
+    }
+    .check-item input { display: none; }
+    .check-item.selected {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(0,229,176,0.08);
+    }
+
+    /* ─── Submit ─────────────────────────────────── */
+    .btn-predict {
+      width: 100%; margin-top: 1.5rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000; font-family: var(--sans);
+      font-size: 0.95rem; font-weight: 800;
+      border: none; border-radius: 10px;
+      padding: 0.9rem;
+      cursor: pointer; letter-spacing: 0.04em;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 20px rgba(0,229,176,0.3);
+    }
+    .btn-predict:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,176,0.45); }
+    .btn-predict:active { transform: translateY(0); }
+    .btn-predict:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ─── Result Panel ───────────────────────────── */
+    .result-panel { position: sticky; top: 1.5rem; }
+
+    .result-empty {
+      text-align: center; padding: 3rem 1rem;
+    }
+    .result-empty .pulse-icon {
+      width: 72px; height: 72px; margin: 0 auto 1.25rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,229,176,0.15) 40%, transparent 70%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      animation: pulse 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50%       { transform: scale(1.1); opacity: 0.7; }
+    }
+    .result-empty p { color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+    /* ─── Result Card ────────────────────────────── */
+    .result-card { display: none; }
+
+    .band-badge {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 0.4rem 1rem; border-radius: 20px;
+      margin-bottom: 1rem;
+    }
+
+    .co2-big {
+      font-size: 3.2rem; font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 0.2rem;
+    }
+    .co2-unit {
+      font-family: var(--mono); font-size: 0.75rem; color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 0.75rem; margin-bottom: 1.25rem;
+    }
+    .metric-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.85rem 1rem;
+    }
+    .metric-box .m-label {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 0.25rem; font-weight: 600;
+    }
+    .metric-box .m-val {
+      font-family: var(--mono); font-size: 1rem; font-weight: 700;
+    }
+
+    /* Gauge bar */
+    .gauge-wrap { margin-bottom: 1.25rem; }
+    .gauge-label {
+      display: flex; justify-content: space-between;
+      font-size: 0.7rem; color: var(--muted); margin-bottom: 0.4rem;
+    }
+    .gauge-track {
+      height: 8px; background: var(--surface); border-radius: 4px;
+      border: 1px solid var(--border); overflow: hidden;
+    }
+    .gauge-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 1s cubic-bezier(.4,0,.2,1);
+      background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444);
+    }
+
+    /* Tips */
+    .tips-list { list-style: none; }
+    .tips-list li {
+      display: flex; gap: 0.6rem; align-items: flex-start;
+      font-size: 0.8rem; color: var(--muted); line-height: 1.5;
+      padding: 0.5rem 0; border-bottom: 1px solid var(--border);
+    }
+    .tips-list li:last-child { border-bottom: none; }
+    .tips-list .tip-icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Spinner ────────────────────────────────── */
+    .spinner {
+      display: none; width: 24px; height: 24px;
+      border: 3px solid rgba(0,229,176,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── Error toast ────────────────────────────── */
+    .error-toast {
+      display: none;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 8px; padding: 0.75rem 1rem;
+      font-size: 0.8rem; color: #fca5a5;
+      margin-top: 1rem; font-family: var(--mono);
+    }
+
+    /* ─── Footer ─────────────────────────────────── */
+    footer {
+      position: relative; z-index: 10;
+      text-align: center; padding: 1.5rem;
+      font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+      border-top: 1px solid var(--border);
+    }
+    footer span { color: var(--accent); }
+
+    /* ─── Animations ─────────────────────────────── */
+    .fade-up {
+      animation: fadeUp .5s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────── -->
+<header class="fade-up">
+  <div class="logo-icon">🌍</div>
+  <div class="logo-text">
+    <h1>CarbonPredict</h1>
+    <p>Decision Tree · ML Model · v1.0</p>
+  </div>
+</header>
+
+<!-- ── Hero ────────────────────────────────────────── -->
+<section class="hero fade-up" style="animation-delay:.1s">
+  <h2>Predict Your<br><span>CO₂ Footprint</span></h2>
+  <p>Enter your lifestyle habits or industrial activity data. Our trained Decision Tree model will estimate your carbon emissions and classify the severity.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchMode('household')">🏠 Household</button>
+    <button class="tab-btn"       onclick="switchMode('industrial')">🏭 Industrial</button>
+  </div>
+</section>
+
+<!-- ── Main ─────────────────────────────────────────── -->
+<div class="main-wrap">
+
+  <!-- LEFT: Form -->
+  <div class="card fade-up" style="animation-delay:.2s">
+
+    <!-- ── HOUSEHOLD FORM ──────────────────────────── -->
+    <div id="panel-household" class="form-panel active">
+      <div class="section-label">Personal Lifestyle Data</div>
+      <form id="form-household">
+        <input type="hidden" name="mode" value="household" />
+        <div class="form-grid">
+
+          <div class="field">
+            <label>Body Type</label>
+            <select name="body_type">
+              {% for bt in body_types %}
+              <option value="{{ bt }}">{{ bt | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Sex</label>
+            <select name="sex">
+              {% for s in sexes %}
+              <option value="{{ s }}">{{ s | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Diet</label>
+            <select name="diet">
+              {% for d in diets %}
+              <option value="{{ d }}">{{ d | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Shower Frequency</label>
+            <select name="how_often_shower">
+              {% for s in showers %}
+              <option value="{{ s }}">{{ s | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Heating Energy Source</label>
+            <select name="heating_energy_source">
+              {% for h in heatings %}
+              <option value="{{ h }}">{{ h | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Primary Transport</label>
+            <select name="transport">
+              {% for t in transports %}
+              <option value="{{ t }}">{{ t | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Vehicle Type</label>
+            <select name="vehicle_type">
+              {% for v in vehicles %}
+              <option value="{{ v }}">{{ v | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Vehicle Distance / Month (km)</label>
+            <input type="number" name="vehicle_monthly_distance_km" value="210" min="0" max="50000" />
+          </div>
+
+          <div class="field">
+            <label>Air Travel Frequency</label>
+            <select name="frequency_of_traveling_by_air">
+              {% for a in air_travels %}
+              <option value="{{ a }}">{{ a | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Social Activity</label>
+            <select name="social_activity">
+              {% for sa in socials %}
+              <option value="{{ sa }}">{{ sa | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Monthly Grocery Bill (₹)</label>
+            <input type="number" name="monthly_grocery_bill" value="200" min="0" />
+          </div>
+
+          <div class="field">
+            <label>Waste Bag Size</label>
+            <select name="waste_bag_size">
+              {% for b in bag_sizes %}
+              <option value="{{ b }}">{{ b | title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Waste Bags / Week</label>
+            <input type="number" name="waste_bag_weekly_count" value="3" min="0" max="30" />
+          </div>
+
+          <div class="field">
+            <label>TV / PC Daily Hours</label>
+            <input type="number" name="how_long_tv_pc_daily_hour" value="4" min="0" max="24" />
+          </div>
+
+          <div class="field">
+            <label>Internet Daily Hours</label>
+            <input type="number" name="how_long_internet_daily_hour" value="3" min="0" max="24" />
+          </div>
+
+          <div class="field">
+            <label>New Clothes / Month</label>
+            <input type="number" name="how_many_new_clothes_monthly" value="5" min="0" max="100" />
+          </div>
+
+          <div class="field">
+            <label>Energy Efficiency Practices</label>
+            <select name="energy_efficiency">
+              {% for e in efficiencies %}
+              <option value="{{ e }}">{{ e }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="field full">
+            <label>Recycling Materials (select all that apply)</label>
+            <div class="check-group" id="recycling-group">
+              {% for r in recycling_opts %}
+              <div class="check-item" onclick="toggleCheck(this, 'recycling', '{{ r }}')">
+                <input type="checkbox" name="recycling" value="{{ r }}" />
+                {{ r | title }}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <div class="field full">
+            <label>Cooking Appliances (select all that apply)</label>
+            <div class="check-group" id="cooking-group">
+              {% for c in cooking_opts %}
+              <div class="check-item" onclick="toggleCheck(this, 'cooking_with', '{{ c }}')">
+                <input type="checkbox" name="cooking_with" value="{{ c }}" />
+                {{ c | title }}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div><!-- /form-grid -->
+        <button type="submit" class="btn-predict">
+          <span class="btn-text">⚡ Calculate Emissions</span>
+          <div class="spinner" id="spinner-h"></div>
+        </button>
+        <div class="error-toast" id="err-h"></div>
+      </form>
+    </div><!-- /panel-household -->
+
+    <!-- ── INDUSTRIAL FORM ─────────────────────────── -->
+    <div id="panel-industrial" class="form-panel">
+      <div class="section-label">Industrial Activity Data</div>
+      <form id="form-industrial">
+        <input type="hidden" name="mode" value="industrial" />
+        <div class="form-grid">
+
+          <div class="field">
+            <label>Country Code (numeric)</label>
+            <input type="number" name="country_code" value="50" min="0" max="300" />
+          </div>
+
+          <div class="field">
+            <label>Year</label>
+            <input type="number" name="year" value="2020" min="1990" max="2030" />
+          </div>
+
+          <div class="field">
+            <label>Coal CO₂ (million tonnes)</label>
+            <input type="number" name="coal_co2" value="0" min="0" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Oil CO₂ (million tonnes)</label>
+            <input type="number" name="oil_co2" value="0" min="0" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Gas CO₂ (million tonnes)</label>
+            <input type="number" name="gas_co2" value="0" min="0" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Cement CO₂ (million tonnes)</label>
+            <input type="number" name="cement_co2" value="0" min="0" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Flaring CO₂ (million tonnes)</label>
+            <input type="number" name="flaring_co2" value="0" min="0" step="0.01" />
+          </div>
+
+          <div class="field">
+            <label>Other Industry CO₂ (million tonnes)</label>
+            <input type="number" name="other_industry_co2" value="0" min="0" step="0.01" />
+          </div>
+
+        </div>
+        <div style="margin-top:1rem; padding: 0.85rem 1rem; background:rgba(14,165,233,0.07); border:1px solid rgba(14,165,233,0.2); border-radius:8px; font-size:0.78rem; color:#7dd3fc; font-family: var(--mono); line-height:1.6;">
+          💡 Enter values in <strong>million tonnes</strong>. The model internally converts to kg (×10⁹).<br/>
+          Set unknown sources to 0. At least one source value is needed for a meaningful result.
+        </div>
+        <button type="submit" class="btn-predict">
+          <span class="btn-text">⚡ Calculate Emissions</span>
+          <div class="spinner" id="spinner-i"></div>
+        </button>
+        <div class="error-toast" id="err-i"></div>
+      </form>
+    </div><!-- /panel-industrial -->
+
+  </div><!-- /card left -->
+
+  <!-- RIGHT: Result Panel -->
+  <div class="result-panel fade-up" style="animation-delay:.3s">
+    <div class="card" id="result-card">
+
+      <!-- Empty state -->
+      <div class="result-empty" id="result-empty">
+        <div class="pulse-icon">🌱</div>
+        <p>Fill in the form and click<br/><strong style="color:var(--text)">Calculate Emissions</strong><br/>to see your CO₂ prediction.</p>
+      </div>
+
+      <!-- Filled state -->
+      <div id="result-filled" style="display:none">
+        <div class="section-label">Prediction Result</div>
+
+        <div id="band-badge" class="band-badge"></div>
+
+        <div id="co2-big" class="co2-big"></div>
+        <div id="co2-unit" class="co2-unit"></div>
+
+        <div class="metric-row">
+          <div class="metric-box">
+            <div class="m-label">In Tonnes</div>
+            <div class="m-val" id="m-tonnes">—</div>
+          </div>
+          <div class="metric-box">
+            <div class="m-label">Band</div>
+            <div class="m-val" id="m-band">—</div>
+          </div>
+        </div>
+
+        <div class="gauge-wrap">
+          <div class="gauge-label">
+            <span>LOW</span><span>MEDIUM</span><span>HIGH</span>
+          </div>
+          <div class="gauge-track">
+            <div class="gauge-fill" id="gauge-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:1.25rem">Reduction Tips</div>
+        <ul class="tips-list" id="tips-list"></ul>
+      </div>
+
+    </div>
+  </div><!-- /result-panel -->
+
+</div><!-- /main-wrap -->
+
+<footer>
+  <span>CarbonPredict</span> · Decision Tree Regressor + Classifier ·
+  R² = 0.987 · Accuracy = 87.7%
+</footer>
+
+<!-- ── JavaScript ────────────────────────────────────── -->
+<script>
+  /* ── Mode switch ─────────────────────────────────── */
+  let currentMode = 'household';
+  function switchMode(mode) {
+    currentMode = mode;
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      b.classList.toggle('active', (mode==='household' && i===0)||(mode==='industrial'&&i===1));
+    });
+    document.getElementById('panel-household').classList.toggle('active', mode==='household');
+    document.getElementById('panel-industrial').classList.toggle('active', mode==='industrial');
+    resetResult();
+  }
+
+  /* ── Checkbox toggle ─────────────────────────────── */
+  function toggleCheck(el, name, val) {
+    el.classList.toggle('selected');
+    const cb = el.querySelector('input[type=checkbox]');
+    cb.checked = el.classList.contains('selected');
+  }
+
+  /* ── Reset result ────────────────────────────────── */
+  function resetResult() {
+    document.getElementById('result-empty').style.display = '';
+    document.getElementById('result-filled').style.display = 'none';
+  }
+
+  /* ── Tip generator ───────────────────────────────── */
+  const TIPS = {
+    LOW: [
+      { icon: '♻️', text: 'Great job! Keep recycling and composting.' },
+      { icon: '🚶', text: 'Walking/cycling for short trips is a powerful habit.' },
+      { icon: '🌿', text: 'Consider a plant-based meal once or twice a week.' },
+    ],
+    MEDIUM: [
+      { icon: '⚡', text: 'Switch to energy-efficient appliances to cut emissions.' },
+      { icon: '✈️', text: 'Reduce air travel — 1 long-haul flight ≈ weeks of driving.' },
+      { icon: '🥗', text: 'Shifting to a vegetarian or pescatarian diet can help.' },
+      { icon: '🚗', text: 'Consider carpooling or switching to an electric vehicle.' },
+    ],
+    HIGH: [
+      { icon: '🔋', text: 'Switching to renewables for heating is the biggest win.' },
+      { icon: '🛻', text: 'Your vehicle distance is high — EV or hybrid can halve it.' },
+      { icon: '🌍', text: 'Carbon offsetting can neutralise unavoidable emissions.' },
+      { icon: '💡', text: 'LED lighting + smart thermostats save up to 20% energy.' },
+      { icon: '🛍️', text: 'Fast fashion is a major emitter — buy less, choose quality.' },
+    ],
+  };
+
+  /* ── Gauge percent ───────────────────────────────── */
+  function bandPercent(band) {
+    return { LOW: 15, MEDIUM: 52, HIGH: 88 }[band] || 50;
+  }
+
+  /* ── Show result ─────────────────────────────────── */
+  function showResult(data) {
+    document.getElementById('result-empty').style.display  = 'none';
+    document.getElementById('result-filled').style.display = '';
+
+    const badge = document.getElementById('band-badge');
+    badge.textContent = data.icon + ' ' + data.band + ' EMISSIONS';
+    badge.style.background = data.color + '20';
+    badge.style.color = data.color;
+    badge.style.border = '1px solid ' + data.color + '50';
+
+    // Animated counter for CO2
+    animateCount('co2-big', 0, data.co2_kg, 1200, v => {
+      return v >= 1e9 ? (v/1e9).toFixed(2) + ' B'
+           : v >= 1e6 ? (v/1e6).toFixed(2) + ' M'
+           : v >= 1e3 ? (v/1e3).toFixed(1) + ' K'
+           : Math.round(v).toString();
+    });
+    document.getElementById('co2-big').style.color = data.color;
+    document.getElementById('co2-unit').textContent = 'kg CO₂ per year';
+
+    document.getElementById('m-tonnes').textContent = data.co2_tonnes.toLocaleString() + ' t';
+    document.getElementById('m-band').textContent   = data.band;
+    document.getElementById('m-band').style.color   = data.color;
+
+    // Gauge
+    setTimeout(() => {
+      document.getElementById('gauge-fill').style.width = bandPercent(data.band) + '%';
+    }, 100);
+
+    // Tips
+    const ul = document.getElementById('tips-list');
+    ul.innerHTML = '';
+    (TIPS[data.band] || TIPS.MEDIUM).forEach(t => {
+      ul.innerHTML += `<li><span class="tip-icon">${t.icon}</span><span>${t.text}</span></li>`;
+    });
+  }
+
+  /* ── Number animation ────────────────────────────── */
+  function animateCount(id, from, to, dur, fmt) {
+    const el = document.getElementById(id);
+    const start = performance.now();
+    function step(now) {
+      const t = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      el.textContent = fmt(from + (to - from) * ease);
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* ── Form submit ─────────────────────────────────── */
+  function attachSubmit(formId, spinnerId, errId) {
+    document.getElementById(formId).addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const spinner  = document.getElementById(spinnerId);
+      const errBox   = document.getElementById(errId);
+      const btnText  = e.target.querySelector('.btn-text');
+      const btn      = e.target.querySelector('.btn-predict');
+
+      // Loading state
+      btn.disabled   = true;
+      btnText.style.display  = 'none';
+      spinner.style.display  = 'block';
+      errBox.style.display   = 'none';
+
+      try {
+        const fd = new FormData(e.target);
+        const res = await fetch('/predict', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (data.success) {
+          showResult(data);
+        } else {
+          errBox.textContent  = '⚠ ' + (data.error || 'Prediction failed');
+          errBox.style.display = 'block';
+        }
+      } catch (err) {
+        errBox.textContent  = '⚠ Network error: ' + err.message;
+        errBox.style.display = 'block';
+      } finally {
+        btn.disabled          = false;
+        btnText.style.display = '';
+        spinner.style.display = 'none';
+      }
+    });
+  }
+
+  attachSubmit('form-household', 'spinner-h', 'err-h');
+  attachSubmit('form-industrial', 'spinner-i', 'err-i');
+</script>
+</body>
+</html>
