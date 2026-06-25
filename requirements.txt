@@ -1,8 +1,7 @@
+gunicorn
 flask
 joblib
 pandas
 numpy
 scikit-learn
-matplotlib
-seaborn
 python-dotenv
