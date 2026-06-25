@@ -24,12 +24,12 @@ MODEL_DIR = os.path.join(BASE_DIR, "model")
 # ─────────────────────────────────────────────
 # Load Models & Metadata  (once at startup)
 # ─────────────────────────────────────────────
-print("Loading models...")
+#print("Loading models...")
 reg_model   = joblib.load(os.path.join(MODEL_DIR, "model_regression.pkl"))
 cls_model   = joblib.load(os.path.join(MODEL_DIR, "model_classification.pkl"))
 feature_names = joblib.load(os.path.join(MODEL_DIR, "feature_names.pkl"))
 label_maps  = joblib.load(os.path.join(MODEL_DIR, "label_maps.pkl"))
-print(f"✅ Models loaded — {len(feature_names)} features")
+#print(f"✅ Models loaded — {len(feature_names)} features")
 
 # ─────────────────────────────────────────────
 # Label maps  (label → encoded int)
@@ -201,8 +201,5 @@ def health():
 
 # ─────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n" + "="*55)
-    print("  🌍 Carbon Emission Prediction App")
-    print("  http://localhost:5000")
-    print("="*55 + "\n")
-    app.run(debug=True, port=5000)
+   port = int(os.environ.get("PORT", 5000))
+   app.run(host="0.0.0.0", port=port)
